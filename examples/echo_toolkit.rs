@@ -61,7 +61,7 @@ async fn main() {
     let unifai_toolkit_api_key =
         env::var("UNIFAI_TOOLKIT_API_KEY").expect("UNIFAI_TOOLKIT_API_KEY not set");
 
-    let mut service = ToolkitService::new(unifai_toolkit_api_key.clone());
+    let mut service = ToolkitService::new(&unifai_toolkit_api_key);
 
     let info = ToolkitInfo {
         name: "Echo Slam".to_string(),

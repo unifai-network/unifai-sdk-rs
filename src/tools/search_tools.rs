@@ -10,7 +10,7 @@ pub struct SearchTools {
 }
 
 impl SearchTools {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: &str) -> Self {
         let api_client = build_api_client(api_key);
         Self { api_client }
     }
@@ -74,7 +74,7 @@ mod tests {
     async fn test_search_tools_api() {
         let unifai_agent_api_key =
             env::var("UNIFAI_AGENT_API_KEY").expect("UNIFAI_AGENT_API_KEY not set");
-        let search_tools = SearchTools::new(unifai_agent_api_key);
+        let search_tools = SearchTools::new(&unifai_agent_api_key);
 
         let response = search_tools
             .call(SearchToolsArgs {

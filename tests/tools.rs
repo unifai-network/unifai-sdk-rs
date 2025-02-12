@@ -15,7 +15,7 @@ async fn test_tools_with_openai() {
 
     let unifai_agent_api_key =
         env::var("UNIFAI_AGENT_API_KEY").expect("UNIFAI_AGENT_API_KEY not set");
-    let (search_tools, call_tool) = get_tools(unifai_agent_api_key);
+    let (search_tools, call_tool) = get_tools(&unifai_agent_api_key);
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY not set");
     let openai_client = openai::Client::new(&openai_api_key);

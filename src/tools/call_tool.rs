@@ -11,7 +11,7 @@ pub struct CallTool {
 }
 
 impl CallTool {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: &str) -> Self {
         let api_client = build_api_client(api_key);
         Self { api_client }
     }
@@ -81,7 +81,7 @@ mod tests {
     async fn test_call_tool_api() {
         let unifai_agent_api_key =
             env::var("UNIFAI_AGENT_API_KEY").expect("UNIFAI_AGENT_API_KEY not set");
-        let call_tool = CallTool::new(unifai_agent_api_key);
+        let call_tool = CallTool::new(&unifai_agent_api_key);
 
         let response = call_tool
             .call(CallToolArgs {

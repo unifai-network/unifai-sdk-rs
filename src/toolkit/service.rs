@@ -54,16 +54,16 @@ pub struct ToolkitService {
 
 impl ToolkitService {
     /// Create a Toolkit service with Unifai API Key.
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: &str) -> Self {
         Self {
-            api_key,
+            api_key: api_key.to_string(),
             actions: HashMap::new(),
         }
     }
 
     /// Update Toolkit's name and description.
     pub async fn update_info(&self, info: ToolkitInfo) -> Result<()> {
-        let client = build_api_client(self.api_key.clone());
+        let client = build_api_client(&self.api_key);
         let url = format!("{FRONTEND_API_ENDPOINT}/toolkits/fields/");
 
         client.post(url).json(&info).send().await?;

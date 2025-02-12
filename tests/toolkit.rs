@@ -68,7 +68,7 @@ async fn test_toolkit() {
     let unifai_toolkit_api_key =
         env::var("UNIFAI_TOOLKIT_API_KEY").expect("UNIFAI_TOOLKIT_API_KEY not set");
 
-    let mut service = ToolkitService::new(unifai_toolkit_api_key.clone());
+    let mut service = ToolkitService::new(&unifai_toolkit_api_key);
 
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -89,7 +89,7 @@ async fn test_toolkit() {
     let _ = service.start().await.unwrap();
 
     let action_name = {
-        let search_tools = SearchTools::new(unifai_agent_api_key.clone());
+        let search_tools = SearchTools::new(&unifai_agent_api_key);
         let search_result = search_tools
             .call(SearchToolsArgs {
                 query: unique_toolkit_name.clone(),
@@ -115,7 +115,7 @@ async fn test_toolkit() {
             .unwrap()
     };
 
-    let call_tool = CallTool::new(unifai_agent_api_key);
+    let call_tool = CallTool::new(&unifai_agent_api_key);
     let response = call_tool
         .call(CallToolArgs {
             action: action_name,

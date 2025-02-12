@@ -15,9 +15,6 @@ mod search_tools;
 pub use search_tools::*;
 
 /// Returns two essential tools to integrate Unifai with your agent.
-pub fn get_tools(api_key: String) -> (SearchTools, CallTool) {
-    (
-        SearchTools::new(api_key.clone()),
-        CallTool::new(api_key.clone()),
-    )
+pub fn get_tools(api_key: &str) -> (SearchTools, CallTool) {
+    (SearchTools::new(api_key), CallTool::new(api_key))
 }

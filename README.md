@@ -28,9 +28,7 @@ To access the tools, you need to call the `unifai_sdk::tools::get_tools` functio
 ```rust
 use unifai_sdk::tools::get_tools;
 
-let unifai_agent_api_key = "UNIFAI_AGENT_API_KEY";
-
-let (search_tools, call_tool) = get_tools(unifai_agent_api_key.to_string());
+let (search_tools, call_tool) = get_tools("UNIFAI_AGENT_API_KEY");
 ```
 
 Once you have the tools, the next step is to pass them into the rig agent when constructing it. Below is an example of how to integrate these tools with OpenAI:
@@ -67,9 +65,7 @@ Initialize a toolkit service with your **Toolkit API key**. You can get a key fo
 ```rust
 use unifai_sdk::toolkit::*;
 
-let unifai_toolkit_api_key = "UNIFAI_TOOLKIT_API_KEY";
-
-let mut service = ToolkitService::new(unifai_toolkit_api_key.to_string());
+let mut service = ToolkitService::new("UNIFAI_TOOLKIT_API_KEY");
 ```
 
 Update the toolkit name and description if you need:
