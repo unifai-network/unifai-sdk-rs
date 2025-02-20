@@ -83,7 +83,7 @@ Develop your action by implementing the `Action` trait. For example:
 
 ```rust
 use unifai_sdk::{
-    serde::{Deserialize, Serialize},
+    serde::{self, Deserialize, Serialize},
     serde_json::json,
     thiserror::Error,
     toolkit::*,
@@ -92,6 +92,7 @@ use unifai_sdk::{
 struct EchoSlam;
 
 #[derive(Serialize, Deserialize)]
+#[serde(crate = "serde")]
 struct EchoSlamArgs {
     pub content: String,
 }
@@ -123,15 +124,16 @@ impl Action for EchoSlam {
 
     async fn call(
         &self,
-        ctx: ActionContext<Self::Args>,
+        ctx: ActionContext,
+        params: ActionParams<Self::Args>,
     ) -> Result<ActionResult<Self::Output>, Self::Error> {
         let output = format!(
             "You are agent <${}>, you said \"{}\".",
-            ctx.agent_id, ctx.payload.content
+            ctx.agent_id, params.payload.content
         );
 
         Ok(ActionResult {
-            output,
+            payload: output,
             payment: None,
         })
     }

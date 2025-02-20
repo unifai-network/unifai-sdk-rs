@@ -1,8 +1,9 @@
-use crate::{constants::BACKEND_API_ENDPOINT, utils::build_api_client};
+use crate::{constants::DEFAULT_BACKEND_API_ENDPOINT, utils::build_api_client};
 use reqwest::Client;
 use rig::{completion::ToolDefinition, tool::Tool};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::env;
 
 /// A tool used to search tools on Unifai server.
 pub struct SearchTools {
@@ -51,7 +52,9 @@ impl Tool for SearchTools {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
-        let url = format!("{BACKEND_API_ENDPOINT}/actions/search");
+        let endpoint = env::var("UNIFAI_BACKEND_API_ENDPOINT")
+            .unwrap_or(DEFAULT_BACKEND_API_ENDPOINT.to_string());
+        let url = format!("{endpoint}/actions/search");
 
         self.api_client
             .get(url)

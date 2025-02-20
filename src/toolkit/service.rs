@@ -2,16 +2,17 @@ use super::{
     action::{ActionDyn, ActionResult},
     errors::Result,
     messages::{ActionCallParams, ActionCallResult, ActionsRegisterParams, ToolkitMessage},
-    Action,
+    Action, ActionContext, ActionParams,
 };
 use crate::{
-    constants::{BACKEND_WS_ENDPOINT, FRONTEND_API_ENDPOINT},
+    constants::{DEFAULT_BACKEND_WS_ENDPOINT, DEFAULT_FRONTEND_API_ENDPOINT},
     utils::build_api_client,
 };
 use futures_util::{future::join_all, SinkExt, StreamExt};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, env, sync::Arc, time::Duration};
 use tokio::{net::TcpStream, spawn, sync::mpsc::unbounded_channel, task::JoinHandle, time::sleep};
 use tokio_tungstenite::{
     connect_async,
@@ -31,9 +32,7 @@ pub struct ToolkitInfo {
 ///
 /// # Example
 /// ```ignore
-/// let unifai_toolkit_api_key = "UNIFAI_TOOLKIT_API_KEY";
-///
-/// let mut service = ToolkitService::new(unifai_toolkit_api_key.to_string());
+/// let mut service = ToolkitService::new("UNIFAI_TOOLKIT_API_KEY");
 ///
 /// let info = ToolkitInfo {
 ///     name: "Echo Slam".to_string(),
@@ -49,6 +48,7 @@ pub struct ToolkitInfo {
 /// ```
 pub struct ToolkitService {
     api_key: String,
+    api_client: Client,
     actions: HashMap<String, Box<dyn ActionDyn>>,
 }
 
@@ -57,6 +57,7 @@ impl ToolkitService {
     pub fn new(api_key: &str) -> Self {
         Self {
             api_key: api_key.to_string(),
+            api_client: build_api_client(api_key),
             actions: HashMap::new(),
         }
     }
@@ -64,7 +65,9 @@ impl ToolkitService {
     /// Update Toolkit's name and description.
     pub async fn update_info(&self, info: ToolkitInfo) -> Result<()> {
         let client = build_api_client(&self.api_key);
-        let url = format!("{FRONTEND_API_ENDPOINT}/toolkits/fields/");
+        let endpoint = env::var("UNIFAI_FRONTEND_API_ENDPOINT")
+            .unwrap_or(DEFAULT_FRONTEND_API_ENDPOINT.to_string());
+        let url = format!("{endpoint}/toolkits/fields/");
 
         client.post(url).json(&info).send().await?;
 
@@ -80,10 +83,9 @@ impl ToolkitService {
     ///
     /// Once the service is ready, it returns a [JoinHandle] that keeps the service alive.
     pub async fn start(self) -> Result<JoinHandle<Result<()>>> {
-        let url = format!(
-            "{BACKEND_WS_ENDPOINT}?type=toolkit&api-key={}",
-            self.api_key
-        );
+        let endpoint = env::var("UNIFAI_BACKEND_WS_ENDPOINT")
+            .unwrap_or(DEFAULT_BACKEND_WS_ENDPOINT.to_string());
+        let url = format!("{endpoint}?type=toolkit&api-key={}", self.api_key);
 
         let (mut ws_stream, _) = connect_async(url).await?;
 
@@ -106,6 +108,8 @@ impl ToolkitService {
                 .await?;
         }
 
+        tracing::info!("Toolkit service is running");
+
         let runner = spawn(self.run_continuously(ws_stream));
 
         Ok(runner)
@@ -117,7 +121,7 @@ impl ToolkitService {
     ) -> Result<()> {
         let (response_sender, mut response_receiver) = unbounded_channel();
 
-        let actions_arc = Arc::new(self.actions);
+        let self_arc = Arc::new(self);
 
         loop {
             tokio::select! {
@@ -137,30 +141,40 @@ impl ToolkitService {
                     match msg {
                         Ok(Message::Text(text)) => match serde_json::from_str::<ToolkitMessage>(&text) {
                             Ok(ToolkitMessage::Action { data }) => {
-                                let actions_arc = actions_arc.clone();
+                                let self_arc = self_arc.clone();
                                 let response_sender = response_sender.clone();
+
                                 spawn(async move {
                                     let action_name = data.action.clone();
                                     tracing::info!("Action call: {:?}", data);
-                                    if let Some(result) = handle_action_call(actions_arc, data).await {
-                                        tracing::info!("Action call result: {:?}", result);
-                                        let result_msg = ToolkitMessage::ActionResult { data: result };
-                                        response_sender.send(result_msg).unwrap();
+
+                                    if let Some(result) = handle_action_call(self_arc, data).await {
+                                        tracing::info!("Action result: {:?}", result);
+
+                                        response_sender
+                                            .send(ToolkitMessage::ActionResult { data: result })
+                                            .unwrap();
                                     } else {
                                         tracing::warn!("Action not found: {}", action_name);
                                     }
                                 });
                             }
+
                             Ok(_) => {}
+
                             Err(e) => {
                                 tracing::warn!("Received unknown message: {:?}", e);
                             }
                         },
+
                         Ok(Message::Ping(data)) => {
                             ws_stream.send(Message::Pong(data)).await?;
                         }
+
                         Ok(Message::Close(_)) => break,
+
                         Ok(_) => {}
+
                         Err(e) => {
                             tracing::error!("Failed to parse message: {:?}", e);
                         }
@@ -174,23 +188,41 @@ impl ToolkitService {
 }
 
 async fn handle_action_call(
-    actions: Arc<HashMap<String, Box<dyn ActionDyn>>>,
+    toolkit: Arc<ToolkitService>,
     params: ActionCallParams,
 ) -> Option<ActionCallResult> {
-    if let Some(action) = actions.get(&params.action) {
-        let output = action.call(params.clone().into()).await.unwrap_or_else(|e| {
-            tracing::debug!("Error occured during action call: {:?}", e);
-            ActionResult {
-            output: json!({ "error": "An unexpected error occurred, please report to the toolkit developer" }),
-            payment: None,
-        }});
+    if let Some(action) = toolkit.actions.get(&params.action) {
+        let result = action
+            .call(
+                ActionContext {
+                    api_client: toolkit.api_client.clone(),
+                    action: params.action.clone(),
+                    action_id: params.action_id.clone(),
+                    agent_id: params.agent_id.clone(),
+                },
+                ActionParams {
+                    payload: params.payload,
+                    payment: params.payment,
+                },
+            )
+            .await
+            .unwrap_or_else(|e| {
+                tracing::debug!("Error occured during action call: {:?}", e);
+
+                ActionResult {
+                    payload: json!({
+                        "error": e.to_string()
+                    }),
+                    payment: None,
+                }
+            });
 
         Some(ActionCallResult {
             action: params.action,
             action_id: params.action_id,
             agent_id: params.agent_id,
-            payload: output.output,
-            payment: output.payment,
+            payload: result.payload,
+            payment: result.payment,
         })
     } else {
         None

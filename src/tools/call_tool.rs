@@ -1,9 +1,9 @@
-use crate::{constants::BACKEND_API_ENDPOINT, utils::build_api_client};
+use crate::{constants::DEFAULT_BACKEND_API_ENDPOINT, utils::build_api_client};
 use reqwest::Client;
 use rig::{completion::ToolDefinition, tool::Tool};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::time::Duration;
+use std::{env, time::Duration};
 
 /// A tool used to call specific tool on Unifai server.
 pub struct CallTool {
@@ -44,7 +44,7 @@ impl Tool for CallTool {
                 },
                 "payload": {
                   "type": "string",
-                  "description": "Action payload, based on the payload schema in the search_tools result. You should pass json encoded string of the object.",
+                  "description": "Action payload, based on the payload schema in the search_tools result. You can pass either the json object directly or json encoded string of the object.",
                 },
                 "payment": {
                   "type": "number",
@@ -57,7 +57,9 @@ impl Tool for CallTool {
     }
 
     async fn call(&self, args: Self::Args) -> Result<Self::Output, Self::Error> {
-        let url = format!("{BACKEND_API_ENDPOINT}/actions/call");
+        let endpoint = env::var("UNIFAI_BACKEND_API_ENDPOINT")
+            .unwrap_or(DEFAULT_BACKEND_API_ENDPOINT.to_string());
+        let url = format!("{endpoint}/actions/call");
 
         self.api_client
             .post(url)

@@ -1,4 +1,4 @@
-use super::{errors::ToolkitError, messages::ActionCallParams};
+use super::{context::ActionContext, errors::ToolkitError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{error::Error, future::Future, pin::Pin};
@@ -11,31 +11,15 @@ pub struct ActionDefinition {
     pub payment: Option<Value>,
 }
 
-#[derive(Clone, Debug)]
-pub struct ActionContext<T: for<'a> Deserialize<'a>> {
-    pub action: String,
-    pub action_id: u64,
-    pub agent_id: u64,
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ActionParams<T> {
     pub payload: T,
     pub payment: Option<u64>,
 }
 
-impl From<ActionCallParams> for ActionContext<Value> {
-    fn from(value: ActionCallParams) -> Self {
-        Self {
-            action: value.action,
-            action_id: value.action_id,
-            agent_id: value.agent_id,
-            payload: value.payload,
-            payment: value.payment,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ActionResult<T> {
-    #[serde(rename = "payload")]
-    pub output: T,
+    pub payload: T,
     pub payment: Option<u64>,
 }
 
@@ -46,7 +30,7 @@ pub struct ActionResult<T> {
 /// use serde::{Deserialize, Serialize};
 /// use serde_json::json;
 /// use thiserror::Error;
-/// use unifai_sdk::{toolkit::{Action, ActionContext, ActionDefinition, ActionResult}};
+/// use unifai_sdk::{toolkit::{Action, ActionContext, ActionDefinition, ActionParams, ActionResult}};
 ///
 /// struct EchoSlam;
 ///
@@ -82,15 +66,16 @@ pub struct ActionResult<T> {
 ///
 ///     async fn call(
 ///         &self,
-///         ctx: ActionContext<Self::Args>,
+///         ctx: ActionContext,
+///         params: ActionParams<Self::Args>,
 ///     ) -> Result<ActionResult<Self::Output>, Self::Error> {
 ///         let output = format!(
 ///             "You are agent <${}>, you said \"{}\".",
-///             ctx.agent_id, ctx.payload.content
+///             ctx.agent_id, params.payload.content
 ///         );
 ///
 ///         Ok(ActionResult {
-///             output,
+///             payload: output,
 ///             payment: None,
 ///         })
 ///     }
@@ -119,7 +104,8 @@ pub trait Action: Sized + Send + Sync {
     /// The action execution method.
     fn call(
         &self,
-        ctx: ActionContext<Self::Args>,
+        ctx: ActionContext,
+        params: ActionParams<Self::Args>,
     ) -> impl Future<Output = Result<ActionResult<Self::Output>, Self::Error>> + Send + Sync;
 }
 
@@ -130,7 +116,8 @@ pub(crate) trait ActionDyn: Send + Sync {
 
     fn call(
         &self,
-        ctx: ActionContext<Value>,
+        ctx: ActionContext,
+        params: ActionParams<Value>,
     ) -> Pin<Box<dyn Future<Output = Result<ActionResult<Value>, ToolkitError>> + Send + Sync + '_>>;
 }
 
@@ -145,25 +132,29 @@ impl<T: Action> ActionDyn for T {
 
     fn call(
         &self,
-        ctx: ActionContext<Value>,
+        ctx: ActionContext,
+        params: ActionParams<Value>,
     ) -> Pin<Box<dyn Future<Output = Result<ActionResult<Value>, ToolkitError>> + Send + Sync + '_>>
     {
         Box::pin(async move {
-            let payload = serde_json::from_value(ctx.payload)?;
-            let ctx = ActionContext {
-                action: ctx.action,
-                action_id: ctx.action_id,
-                agent_id: ctx.agent_id,
-                payload,
-                payment: ctx.payment,
+            let payload: <Self as Action>::Args = if let Some(payload_str) = params.payload.as_str()
+            {
+                serde_json::from_str(payload_str)?
+            } else {
+                serde_json::from_value(params.payload)?
             };
 
-            <Self as Action>::call(self, ctx)
+            let params = ActionParams {
+                payload,
+                payment: params.payment,
+            };
+
+            <Self as Action>::call(self, ctx, params)
                 .await
                 .map_err(|e| ToolkitError::ActionCallError(Box::new(e)))
                 .and_then(|result| {
                     Ok(ActionResult {
-                        output: serde_json::to_value(result.output)?,
+                        payload: serde_json::to_value(result.payload)?,
                         payment: result.payment,
                     })
                 })

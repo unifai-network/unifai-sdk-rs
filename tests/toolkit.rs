@@ -7,13 +7,17 @@ use unifai_sdk::{
     rig::tool::Tool,
     serde::{Deserialize, Serialize},
     serde_json::{json, Value},
-    toolkit::{Action, ActionContext, ActionDefinition, ActionResult, ToolkitInfo, ToolkitService},
+    toolkit::{
+        Action, ActionContext, ActionDefinition, ActionParams, ActionResult, ToolkitInfo,
+        ToolkitService,
+    },
     tools::{CallTool, CallToolArgs, SearchTools, SearchToolsArgs},
 };
 
 struct EchoSlam;
 
 #[derive(Serialize, Deserialize)]
+#[serde(crate = "serde")]
 struct EchoSlamArgs {
     pub content: String,
 }
@@ -45,15 +49,16 @@ impl Action for EchoSlam {
 
     async fn call(
         &self,
-        ctx: ActionContext<Self::Args>,
+        ctx: ActionContext,
+        params: ActionParams<Self::Args>,
     ) -> Result<ActionResult<Self::Output>, Self::Error> {
         let output = format!(
             "You are agent <${}>, you said \"{}\".",
-            ctx.agent_id, ctx.payload.content
+            ctx.agent_id, params.payload.content
         );
 
         Ok(ActionResult {
-            output,
+            payload: output,
             payment: None,
         })
     }
