@@ -13,4 +13,4 @@ pub enum ToolkitError {
     WebSocketError(#[from] tokio_tungstenite::tungstenite::Error),
 }
 
-pub type Result<T> = std::result::Result<T, ToolkitError>;
+pub(crate) type Result<T> = std::result::Result<T, ToolkitError>;
