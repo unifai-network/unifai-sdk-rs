@@ -4,10 +4,11 @@ This crate is the Rust SDK for Unifai, an AI native platform for dynamic tools a
 
 ## Installation
 
-Add this crate to your project:
+Add the dependency to your Cargo.toml:
 
-```bash
-cargo add unifai_sdk
+```toml
+[dependencies]
+unifai-sdk = { git = "https://github.com/unifai-network/unifai-sdk-rs" }
 ```
 
 ## Getting your Unifai API key
@@ -45,13 +46,56 @@ let agent = openai_client
     .build();
 ```
 
-Now you can easily use Unifai’s tool capabilities with just one line of code to interact with the LLM.
+Now you can easily use Unifai’s tool capabilities with rig to interact with the LLM.
 
 ```rust
 let prompt = "Get the balance of Solana account 11111111111111111111111111111111.";
-let result = agent.chat(prompt, vec![]).await.unwrap();
+let mut chat_history = vec![Message::user(prompt)];
 
-println!("Result: {}", result);
+// In the future, you will be able to achieve this with just one line of code.
+
+let result = loop {
+    let response = agent
+        .completion("", chat_history.clone())
+        .await
+        .unwrap()
+        .send()
+        .await
+        .unwrap();
+
+    let content = response.choice.first();
+
+    chat_history.push(Message::Assistant {
+        content: OneOrMany::one(content.clone()),
+    });
+
+    match content {
+        AssistantContent::Text(text) => {
+            break text;
+        }
+        AssistantContent::ToolCall(tool_call) => {
+            let tool_result = agent
+                .tools
+                .call(
+                    &tool_call.function.name,
+                    tool_call.function.arguments.to_string(),
+                )
+                .await
+                .unwrap();
+
+            chat_history.push(Message::User {
+                content: OneOrMany::one(UserContent::ToolResult(ToolResult {
+                    id: tool_call.id,
+                    content: OneOrMany::one(ToolResultContent::Text(Text {
+                        text: tool_result,
+                    })),
+                })),
+            })
+        }
+    }
+};
+
+println!("Result: {}", result.text);
 ```
 
 ## Creating tools

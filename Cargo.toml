@@ -2,6 +2,10 @@
 name = "unifai-sdk"
 version = "0.1.0"
 edition = "2021"
+description = "The Rust SDK for Unifai, an AI native platform for dynamic tools and agent to agent communication."
+license-file = "LICENSE"
+readme = "README.md"
+repository = "https://github.com/unifai-network/unifai-sdk-rs"
 
 [dependencies]
 futures-util = "0.3.31"
