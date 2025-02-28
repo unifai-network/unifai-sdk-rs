@@ -6,6 +6,7 @@ use unifai_sdk::{
         providers::openai,
         OneOrMany,
     },
+    tokio,
     tools::get_tools,
 };
 
