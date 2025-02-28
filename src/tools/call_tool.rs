@@ -25,7 +25,7 @@ pub struct CallToolArgs {
 }
 
 impl Tool for CallTool {
-    const NAME: &'static str = "call_tool";
+    const NAME: &'static str = "invoke_service";
 
     type Error = reqwest::Error;
     type Args = CallToolArgs;
@@ -34,17 +34,17 @@ impl Tool for CallTool {
     async fn definition(&self, _prompt: String) -> ToolDefinition {
         ToolDefinition {
             name: Self::NAME.to_string(),
-            description: "Call a tool returned by search_tools".to_string(),
+            description: "Call a tool returned by search_services".to_string(),
             parameters: json!({
               "type": "object",
               "properties": {
                 "action": {
                   "type": "string",
-                  "description": "The exact action you want to call in the search_tools result."
+                  "description": "The exact action you want to call in the search_services result."
                 },
                 "payload": {
                   "type": "string",
-                  "description": "Action payload, based on the payload schema in the search_tools result. You can pass either the json object directly or json encoded string of the object.",
+                  "description": "Action payload, based on the payload schema in the search_services result. You can pass either the json object directly or json encoded string of the object.",
                 },
                 "payment": {
                   "type": "number",

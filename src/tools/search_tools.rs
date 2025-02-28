@@ -24,7 +24,7 @@ pub struct SearchToolsArgs {
 }
 
 impl Tool for SearchTools {
-    const NAME: &'static str = "search_tools";
+    const NAME: &'static str = "search_services";
 
     type Error = reqwest::Error;
     type Args = SearchToolsArgs;
