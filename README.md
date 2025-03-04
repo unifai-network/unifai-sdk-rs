@@ -4,11 +4,10 @@ This crate is the Rust SDK for Unifai, an AI native platform for dynamic tools a
 
 ## Installation
 
-Add the dependency to your Cargo.toml:
+Add this crate to your project:
 
-```toml
-[dependencies]
-unifai-sdk = { git = "https://github.com/unifai-network/unifai-sdk-rs" }
+```bash
+cargo add unifai_sdk
 ```
 
 ## Getting your Unifai API key
@@ -126,10 +125,10 @@ service.update_info(info).await.unwrap();
 Develop your action by implementing the `Action` trait. For example:
 
 ```rust
+use thiserror::Error;
 use unifai_sdk::{
     serde::{self, Deserialize, Serialize},
     serde_json::json,
-    thiserror::Error,
     toolkit::*,
 };
 

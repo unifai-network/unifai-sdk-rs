@@ -11,5 +11,4 @@ mod utils;
 pub use rig;
 pub use serde;
 pub use serde_json;
-pub use thiserror;
 pub use tokio;
