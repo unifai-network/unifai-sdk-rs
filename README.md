@@ -7,7 +7,7 @@ This crate is the Rust SDK for Unifai, an AI native platform for dynamic tools a
 Add this crate to your project:
 
 ```bash
-cargo add unifai_sdk
+cargo add unifai-sdk
 ```
 
 ## Getting your Unifai API key
