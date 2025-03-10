@@ -1,4 +1,7 @@
-# unifai-sdk-rs
+# unifai-sdk
+
+<a href="https://docs.rs/unifai-sdk/latest"><img src="https://img.shields.io/badge/docs-API Reference-orange.svg" /></a> &nbsp;
+<a href="https://crates.io/crates/unifai-sdk"><img src="https://img.shields.io/crates/v/unifai-sdk.svg" /></a> &nbsp;
 
 This crate is the Rust SDK for Unifai, an AI native platform for dynamic tools and agent to agent communication.
 
